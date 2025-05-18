@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
-import { Box, Button, Modal, TextInput } from "@mantine/core";
+import {
+  Box,
+  Button,
+  Modal,
+  NumberInput,
+  Select,
+  SimpleGrid,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Prisma, type Category } from "@/lib/types/prisma";
+import { Prisma, type Product } from "@/lib/types/prisma";
 import DataTable from "@/components/DataTable";
 import api from "@/lib/api/admin";
 import { useDebouncedState, useDisclosure } from "@mantine/hooks";
@@ -11,26 +20,26 @@ import { useForm, zodResolver } from "@mantine/form";
 import { toSlug } from "@/lib/utils/slug";
 import { enqueueSnackbar } from "notistack";
 import ImagesViewer from "@/components/ImageViewer";
+import { userStore } from "@/lib/store/user-store";
+import type { ModalState } from "@/lib/types/helper";
 
-type ModalState = readonly [
-  boolean,
-  {
-    readonly open: () => void;
-    readonly close: () => void;
-    readonly toggle: () => void;
-  }
-];
-
-export default function CategoriesPage() {
+export default function ProductsPage() {
   const { t } = useTranslation();
-  const createState = useDisclosure();
-  const updateState = useDisclosure();
-  const deleteState = useDisclosure();
+  const mutateState = useDisclosure();
 
-  const [query, setQuery] = useState<Prisma.CategoryFindManyArgs>({});
+  const [query, setQuery] = useState<Prisma.ProductFindManyArgs>({
+    include: {
+      category: true,
+    },
+    take: 10,
+    skip: 0,
+  });
   const [page, setPage] = useState(1);
   const [search, setSearch] = useDebouncedState("", 200);
-  const [category, setCategory] = useState<Category>();
+  const [mutateMode, setMutateMode] = useState<"create" | "update" | "delete">(
+    "create"
+  );
+  const [product, setProduct] = useState<Product>();
 
   const updateQuery = (search: string, page: number) => {
     setQuery({
@@ -40,14 +49,17 @@ export default function CategoriesPage() {
           mode: "insensitive",
         },
       },
+      include: {
+        category: true,
+      },
       take: 10,
       skip: (page - 1) * 10,
     });
   };
 
-  const categoriesQuery = useQuery({
-    queryKey: ["categories", query],
-    queryFn: async () => api.query("category", query),
+  const productsQuery = useQuery({
+    queryKey: ["products", query],
+    queryFn: async () => api.query("product", query),
     placeholderData: keepPreviousData,
   });
 
@@ -57,11 +69,12 @@ export default function CategoriesPage() {
 
   return (
     <Box>
-      <Box className="text-xl font-semibold">{t("categories")}</Box>
+      <Box className="text-xl font-semibold">{t("products")}</Box>
       <Box className="my-4 flex gap-2">
         <Button
           onClick={() => {
-            createState[1].open();
+            setMutateMode("create");
+            mutateState[1].open();
           }}
         >
           {t("create")}
@@ -80,16 +93,18 @@ export default function CategoriesPage() {
           {
             title: t("edit"),
             onClick: () => {
-              setCategory(record);
-              updateState[1].open();
+              setProduct(record);
+              setMutateMode("update");
+              mutateState[1].open();
             },
           },
           {
             title: t("delete"),
             color: "red",
             onClick: () => {
-              setCategory(record);
-              deleteState[1].open();
+              setProduct(record);
+              setMutateMode("delete");
+              mutateState[1].open();
             },
           },
         ]}
@@ -103,13 +118,32 @@ export default function CategoriesPage() {
             accessor: "name",
           },
           {
-            title: t("image"),
-            accessor: "image",
+            title: t("category"),
+            accessor: "category",
+            render: (record) => {
+              return <Box>{record.category?.name}</Box>;
+            },
+          },
+          {
+            title: t("price"),
+            accessor: "price",
+          },
+          {
+            title: t("discount"),
+            accessor: "discount",
+          },
+          {
+            title: t("stock"),
+            accessor: "stock",
+          },
+          {
+            title: t("images"),
+            accessor: "images",
             render: (record) => {
               return (
                 <Box>
                   <ImagesViewer
-                    images={[record.image]}
+                    images={record.images}
                     thumbnail={{ width: 35 }}
                   />
                 </Box>
@@ -117,7 +151,7 @@ export default function CategoriesPage() {
             },
           },
         ]}
-        records={categoriesQuery.data?.data || []}
+        records={productsQuery.data?.data || []}
         // pagination
         page={page}
         onPageChange={(page) => {
@@ -127,248 +161,224 @@ export default function CategoriesPage() {
         // default things
         stickyHeader
         striped
-        storageKey="seller-products"
+        storageKey="admin-products"
         withColumnBorders
         withRowBorders
         withTableBorder
         withRowNumber
       />
 
-      <Create state={createState} onSuccess={categoriesQuery.refetch} />
-      <Update
-        state={updateState}
-        category={category}
-        onSuccess={categoriesQuery.refetch}
-      />
-      <Delete
-        state={deleteState}
-        category={category}
-        onSuccess={categoriesQuery.refetch}
+      <Mutate
+        mode={mutateMode}
+        state={mutateState}
+        onSuccess={productsQuery.refetch}
+        product={product}
       />
     </Box>
   );
 }
 
-const Create = (props: { state: ModalState; onSuccess: () => void }) => {
-  const { t } = useTranslation();
-
-  const schema = z.object({
-    name: z.string().min(3),
-    image: z.string().min(3),
-    parentCategoryId: z.optional(z.string()),
-  });
-
-  const form = useForm({
-    initialValues: {
-      name: "",
-      slug: "",
-      image: "",
-    },
-    validate: zodResolver(schema),
-  });
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      const slug = toSlug(form.values.name);
-      return api.create("category", {
-        data: {
-          name: form.values.name,
-          slug,
-          image: form.values.image,
-        },
-      });
-    },
-  });
-
-  return (
-    <Modal
-      title={t("create")}
-      opened={props.state[0]}
-      onClose={props.state[1].close}
-      transitionProps={{
-        onExited: form.reset,
-      }}
-    >
-      <TextInput
-        data-auto-focus
-        label={t("name")}
-        placeholder={t("name")}
-        required
-        {...form.getInputProps("name")}
-      />
-
-      <TextInput
-        label={t("image")}
-        placeholder={t("image")}
-        required
-        {...form.getInputProps("image")}
-      />
-
-      <Box className="flex gap-2 justify-end mt-4">
-        <Button variant="default" onClick={props.state[1].close}>
-          {t("cancel")}
-        </Button>
-        <Button
-          onClick={async () => {
-            const response = await mutation.mutateAsync();
-            if (response.ok) {
-              enqueueSnackbar(t("success"), { variant: "success" });
-              props.onSuccess();
-              props.state[1].close();
-            }
-          }}
-          loading={mutation.isPending}
-        >
-          {t("create")}
-        </Button>
-      </Box>
-    </Modal>
-  );
-};
-
-const Update = (props: {
-  category?: Category;
+const Mutate = ({
+  state,
+  onSuccess,
+  mode = "create",
+  product,
+}: {
   state: ModalState;
   onSuccess: () => void;
+  product?: Product;
+  mode?: "create" | "update" | "delete";
 }) => {
   const { t } = useTranslation();
+  const { user } = userStore();
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => {
+      if (mode != "delete") {
+        return api.query("category", {});
+      } else {
+        return null;
+      }
+    },
+  });
 
   const schema = z.object({
     name: z.string().min(3),
-    image: z.string().min(3),
-    parentCategoryId: z.optional(z.string()),
+    images: z.string().min(3),
+    categoryId: z.string(),
+    description: z.string(),
+    price: z.number(),
+    stock: z.number(),
+    discount: z.number(),
+    attributes: z.nullable(z.string()),
   });
 
-  const form = useForm({
+  const form = useForm<z.input<typeof schema> & { slug: string }>({
     initialValues: {
       name: "",
       slug: "",
-      image: "",
+      images: "",
+      description: "",
+      price: 0,
+      stock: 1,
+      categoryId: "",
+      discount: 0,
+      attributes: "",
     },
     validate: zodResolver(schema),
   });
 
   useEffect(() => {
-    if (props.category) {
-      form.setValues({
-        name: props.category.name,
-        slug: props.category.slug,
-        image: props.category.image,
-      });
+    if (mode == "update") {
+      product?.attributes;
+      if (product) {
+        form.setValues({
+          ...product,
+          images: product.images.join(","),
+          categoryId: product.categoryId!,
+          attributes: product.attributes,
+        });
+      }
     }
-  }, [props.state[0]]);
+  }, [state[0]]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!props.category) {
-        return;
-      }
       const slug = toSlug(form.values.name);
-      return api.update("category", {
-        where: {
-          id: props.category?.id,
-        },
-        data: {
-          name: form.values.name,
-          slug,
-          image: form.values.image,
-        },
+
+      console.log({
+        ...form.values,
+        slug,
       });
+
+      if (mode == "create") {
+        return api.create("product", {
+          data: {
+            name: form.values.name,
+            slug,
+            description: form.values.description,
+            price: form.values.price,
+            stock: form.values.stock,
+            images: form.values.images.trim().split(","),
+            discount: form.values.discount,
+            attributes: form.values.attributes,
+            categoryId: form.values.categoryId,
+            sellerId: user?.seller?.id!,
+          },
+        });
+      } else if (mode == "update") {
+        return api.update("product", {
+          where: {
+            id: product?.id,
+          },
+          data: {
+            name: form.values.name,
+            slug,
+            description: form.values.description,
+            price: form.values.price,
+            stock: form.values.stock,
+            images: form.values.images.trim().split(","),
+            discount: form.values.discount,
+            attributes: form.values.attributes,
+            categoryId: form.values.categoryId,
+            sellerId: user?.seller?.id!,
+          },
+        });
+      } else {
+        return api.delete("product", {
+          where: {
+            id: product?.id,
+          },
+        });
+      }
     },
   });
 
   return (
     <Modal
-      title={t("create")}
-      opened={props.state[0]}
-      onClose={props.state[1].close}
+      title={t(mode)}
+      opened={state[0]}
+      onClose={state[1].close}
       transitionProps={{
         onExited: form.reset,
       }}
     >
-      <TextInput
-        data-auto-focus
-        label={t("name")}
-        placeholder={t("name")}
-        required
-        {...form.getInputProps("name")}
-      />
-
-      <TextInput
-        label={t("image")}
-        placeholder={t("image")}
-        required
-        {...form.getInputProps("image")}
-      />
+      {mode == "delete" ? (
+        <Box>{t("delete_question")}</Box>
+      ) : (
+        <Box className="flex flex-col gap-1">
+          {" "}
+          <TextInput
+            data-autofocus
+            label={t("name")}
+            placeholder={t("name")}
+            required
+            {...form.getInputProps("name")}
+          />
+          <Textarea
+            label={t("description")}
+            placeholder={t("description")}
+            required
+            {...form.getInputProps("description")}
+          />
+          <Textarea
+            label={t("images")}
+            placeholder={"image1,image2,image3..."}
+            required
+            {...form.getInputProps("images")}
+          />
+          <SimpleGrid cols={{ lg: 3 }} spacing="sm">
+            <NumberInput
+              label={t("price")}
+              placeholder={t("price")}
+              required
+              {...form.getInputProps("price")}
+            />
+            <NumberInput
+              label={t("discount")}
+              placeholder={t("discount")}
+              required
+              {...form.getInputProps("discount")}
+            />
+            <NumberInput
+              label={t("stock")}
+              placeholder={t("stock")}
+              required
+              {...form.getInputProps("stock")}
+            />
+          </SimpleGrid>
+          <Select
+            label={t("category")}
+            placeholder={t("category")}
+            required
+            searchable
+            data={categoriesQuery.data?.data?.map((category) => ({
+              label: category.name,
+              value: category.id,
+            }))}
+            {...form.getInputProps("categoryId")}
+          />
+          <Textarea
+            label={t("attributes")}
+            placeholder={"color:green,red,purple;size:sm,lg..."}
+            {...form.getInputProps("attributes")}
+          />
+        </Box>
+      )}
 
       <Box className="flex gap-2 justify-end mt-4">
-        <Button variant="default" onClick={props.state[1].close}>
+        <Button variant="default" onClick={state[1].close}>
           {t("cancel")}
         </Button>
         <Button
+          color={mode == "delete" ? "red" : "orange"}
           onClick={async () => {
             const response = await mutation.mutateAsync();
-            if (response?.ok) {
+            if (response.ok) {
               enqueueSnackbar(t("success"), { variant: "success" });
-              props.onSuccess();
-              props.state[1].close();
-            }
-          }}
-          loading={mutation.isPending}
-        >
-          {t("create")}
-        </Button>
-      </Box>
-    </Modal>
-  );
-};
-
-const Delete = (props: {
-  state: ModalState;
-  category?: Category;
-  onSuccess: () => void;
-}) => {
-  const { t } = useTranslation();
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (!props.category) {
-        return;
-      }
-
-      return api.delete("category", {
-        where: {
-          id: props.category?.id,
-        },
-      });
-    },
-  });
-
-  return (
-    <Modal
-      title={t("delete")}
-      opened={props.state[0]}
-      onClose={props.state[1].close}
-    >
-      <Box>{t("delete_confirmation")}</Box>
-
-      <Box className="flex gap-2 justify-end">
-        <Button
-          variant="default"
-          onClick={() => {
-            props.state[1].close();
-          }}
-        >
-          {t("cancel")}
-        </Button>
-        <Button
-          color="red"
-          onClick={async () => {
-            const response = await mutation.mutateAsync();
-            if (response?.ok) {
-              enqueueSnackbar(t("success"), { variant: "success" });
-              props.onSuccess();
-              props.state[1].close();
+              onSuccess?.();
+              state[1].close();
             }
           }}
           loading={mutation.isPending}

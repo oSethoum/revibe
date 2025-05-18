@@ -2,16 +2,12 @@ import { Box, Button, TextInput, Image } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { Carousel } from "@mantine/carousel";
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api/admin";
+import api from "@/lib/api/public";
 import { Link } from "react-router";
-
-const links = [
-  { name: "Homepage", path: "/" },
-  { name: "Shop", path: "/shop" },
-  { name: "Deals", path: "/deals" },
-  { name: "About", path: "/about" },
-  { name: "Sell", path: "/sell" },
-];
+import UserProfile from "@/components/UserProfile";
+import LanguageButton from "@/components/LanguageButton";
+import Cart from "@/components/Cart";
+import { useTranslation } from "react-i18next";
 
 const slides = [
   {
@@ -43,8 +39,10 @@ const slides = [
 export default function HomePage() {
   const query = useQuery({
     queryKey: ["categories"],
-    queryFn: () => api.query("category"),
+    queryFn: () => api.category.query(),
   });
+
+  const { t } = useTranslation();
 
   return (
     <Box>
@@ -65,35 +63,10 @@ export default function HomePage() {
         {/* Links */}
         <Box className="flex-1/2 ">
           <Box className="flex justify-end items-center">
-            {links.map((item, index) => (
-              <Link
-                to={item.path}
-                key={item.name}
-                className="relative px-4 py-2 group overflow-hidden"
-              >
-                <span
-                  className={`text-gray-700 font-medium group-hover:text-[#FDA210] transition-colors duration-300`}
-                >
-                  {item.name}
-                </span>
-                <span
-                  className={`absolute bottom-0 left-0 w-full h-0.5 transform scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300`}
-                  style={{
-                    backgroundColor:
-                      index % 3 === 0
-                        ? "#FDA210"
-                        : index % 3 === 1
-                        ? "#3FA878"
-                        : "#FF4E88",
-                  }}
-                ></span>
-              </Link>
-            ))}
-            <Box className="flex gap-3">
-              <div>Profile</div>
-              <div className="hover:bg-gray-200 p-2 rounded-full cursor-pointer">
-                Cart
-              </div>
+            <Box className="flex gap-3 ">
+              <LanguageButton />
+              <UserProfile />
+              <Cart />
             </Box>
           </Box>
         </Box>
@@ -126,8 +99,53 @@ export default function HomePage() {
           </Carousel.Slide>
         ))}
       </Carousel>
+
       <Box className="px-8">
-        <h1 className="text-3xl grow mb-4 mt-12">Categories</h1>
+        <h1 className="text-3xl grow mb-4 mt-12">{t("categories")}</h1>
+
+        <Carousel
+          slideSize={"20%"}
+          slideGap={10}
+          emblaOptions={{ align: "center" }}
+        >
+          {query.data?.data?.map((category) => (
+            <Carousel.Slide key={category.id}>
+              <Box className="flex flex-col gap-3 cursor-pointer">
+                <Box className="overflow-hidden h-[400px] rounded-md hover:brightness-75 transition-all duration-150">
+                  <Image
+                    className="object-contain h-full hover:scale-110 transition-all duration-150"
+                    src={category.image}
+                  />
+                </Box>
+                <h2 className="font-semibold">{category.name}</h2>
+              </Box>
+            </Carousel.Slide>
+          ))}
+        </Carousel>
+      </Box>
+
+      <Box className="px-8">
+        <h1 className="text-3xl grow mb-4 mt-12">{t("best_sale")}</h1>
+
+        <Carousel
+          slideSize={"20%"}
+          slideGap={10}
+          emblaOptions={{ align: "center" }}
+        >
+          {query.data?.data?.map((category) => (
+            <Carousel.Slide key={category.id}>
+              <Box className="flex flex-col gap-3 cursor-pointer">
+                <Box className="overflow-hidden h-[400px] rounded-md hover:brightness-75 transition-all duration-150">
+                  <Image
+                    className="object-contain h-full hover:scale-110 transition-all duration-150"
+                    src={category.image}
+                  />
+                </Box>
+                <h2 className="font-semibold">{category.name}</h2>
+              </Box>
+            </Carousel.Slide>
+          ))}
+        </Carousel>
       </Box>
 
       <Box className="mt-20 h-[600px]"></Box>

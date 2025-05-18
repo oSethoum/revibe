@@ -219,7 +219,7 @@ const Create = (props: { state: ModalState; onSuccess: () => void }) => {
           }}
           loading={mutation.isPending}
         >
-          {t("create")}
+          {t("confirm")}
         </Button>
       </Box>
     </Modal>
@@ -279,7 +279,7 @@ const Update = (props: {
 
   return (
     <Modal
-      title={t("create")}
+      title={t("update")}
       opened={props.state[0]}
       onClose={props.state[1].close}
       transitionProps={{
@@ -303,7 +303,7 @@ const Update = (props: {
 
       <Box className="flex gap-2 justify-end mt-4">
         <Button variant="default" onClick={props.state[1].close}>
-          {t("cancel")}
+          {t("confirm")}
         </Button>
         <Button
           onClick={async () => {
@@ -316,7 +316,7 @@ const Update = (props: {
           }}
           loading={mutation.isPending}
         >
-          {t("create")}
+          {t("confirm")}
         </Button>
       </Box>
     </Modal>

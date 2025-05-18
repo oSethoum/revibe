@@ -11,17 +11,38 @@ import {
   Title,
 } from "@mantine/core";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useForm } from "@mantine/form";
+import { useMutation } from "@tanstack/react-query";
+import api from "@/lib/api/auth";
+import { userStore } from "@/lib/store/user-store";
 
 export default function LoginPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { setUser } = userStore();
 
   const form = useForm({
     initialValues: {
       email: "",
       password: "",
       rememberMe: false,
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.Login(form.values);
+      if (response.ok) {
+        setUser(response.data?.user!);
+        if (response.data?.user.role == "ADMIN") {
+          navigate("/admin/dashboard");
+        } else if (response.data?.user.role == "SELLER") {
+          navigate("/seller/dashboard");
+        } else {
+          navigate("/");
+        }
+      }
     },
   });
 
@@ -37,7 +58,11 @@ export default function LoginPage() {
       </Text>
 
       <Paper withBorder shadow="sm" p={22} mt={30} radius="md">
-        <form>
+        <form
+          onSubmit={form.onSubmit(() => {
+            mutation.mutateAsync();
+          })}
+        >
           <TextInput
             name="email"
             label={t("email")}
@@ -61,7 +86,7 @@ export default function LoginPage() {
             <Checkbox
               name="remember-me"
               label={t("remember_me")}
-              {...form.getInputProps("rememerMe", { type: "checkbox" })}
+              {...form.getInputProps("rememberMe", { type: "checkbox" })}
             />
             <Anchor component="button" size="sm">
               {t("forgot_password")}

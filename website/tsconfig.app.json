@@ -26,8 +26,11 @@
     "noImplicitAny": false,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    }
+      "#/prisma/*": ["../api/prisma/client/*"], // or use dist if you prefer
+      "@/*": ["src/*"],
+    },
+
+    
   },
   "include": ["src"]
 }

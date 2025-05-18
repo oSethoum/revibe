@@ -14,6 +14,7 @@ authRoutes.post(
     z.object({
       email: z.string().email(),
       password: z.string(),
+      rememberMe: z.boolean(),
     })
   ),
   async (c) => {
@@ -22,6 +23,10 @@ authRoutes.post(
     const user = await prisma.user.findUnique({
       where: {
         email: body.email,
+      },
+      include: {
+        client: true,
+        seller: true,
       },
     });
 
@@ -35,7 +40,7 @@ authRoutes.post(
       );
     }
 
-    if (await Bun.password.verify(body.password, user.password)) {
+    if (!Bun.password.verifySync(body.password, user.password)) {
       return c.json({
         ok: false,
         message: "Invalid credentials",
@@ -55,11 +60,16 @@ authRoutes.post(
     setCookie(c, "token", token, {
       httpOnly: true,
       domain: ".localhost",
-      maxAge: 60 * 60,
+      maxAge: body.rememberMe ? 60 * 60 : undefined,
     });
 
+    // @ts-ignore
+    user.password = undefined;
     return c.json({
-      token,
+      data: {
+        token,
+        user,
+      },
       ok: true,
     });
   }

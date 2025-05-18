@@ -26,13 +26,13 @@ export const request = async <T>(
   if (response.ok) {
     const json = await response.json();
     if (debug) {
-      console.log("REQUEST", config?.method, `${url}`, "RESPONSE", json);
+      console.log("REQUEST", config, `${url}`, "RESPONSE", json);
     }
     return json as Response<T>;
   } else {
     const text = await response.text();
     if (debug) {
-      console.log("REQUEST", config?.method, `${url}`, "RESPONSE", text);
+      console.log("REQUEST", config, `${url}`, "RESPONSE", text);
     }
     return { ok: false, error: text };
   }

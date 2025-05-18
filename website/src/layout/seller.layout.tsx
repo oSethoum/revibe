@@ -1,4 +1,5 @@
 import NavLink from "@/components/NavLink";
+import { userStore } from "@/lib/store/user-store";
 import { AppShell, Group, Burger, Box, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -6,16 +7,20 @@ import {
   IconDashboard,
   IconLogout,
   IconTruck,
-  IconUser,
-  IconUserBolt,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { Outlet } from "react-router";
+import { Navigate, Outlet } from "react-router";
 
 export default function AdminLayout() {
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
   const { t } = useTranslation();
+
+  const { user } = userStore();
+
+  if (!user || user.role != "SELLER") {
+    return <Navigate to="/auth/login" />;
+  }
 
   return (
     <AppShell

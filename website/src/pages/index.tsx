@@ -15,8 +15,11 @@ import SellerLayout from "@/layout/seller.layout";
 import SellerProductsPage from "./seller/products.page";
 import SellerOrdersPage from "./seller/orders.page";
 import AdminSellersPage from "./admin/sellers.page";
+import { userStore } from "@/lib/store/user-store";
 
 export default function Router() {
+  const { refresh } = userStore();
+  refresh();
   return (
     <BrowserRouter>
       <Routes>

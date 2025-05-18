@@ -1,15 +1,12 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { seed } from "./lib/seed";
 
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import publicRoutes from "./routes/public";
 import clientRoutes from "./routes/client";
 import sellerRoutes from "./routes/seller";
-
-seed();
 
 const app = new Hono().basePath("/api");
 

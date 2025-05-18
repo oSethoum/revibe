@@ -60,6 +60,7 @@ adminRoutes.post("/:resource", async (c) => {
       data,
     });
   } catch (error: any) {
+    console.error(error);
     return c.json(
       {
         ok: false,
@@ -72,6 +73,8 @@ adminRoutes.post("/:resource", async (c) => {
 
 adminRoutes.put("/:resource", async (c) => {
   const body = await c.req.json();
+  console.log(body);
+
   const resource: any = c.req.param("resource");
   try {
     validateResource(resource);

@@ -1,18 +1,21 @@
-import type { User } from "@/lib/types/prisma";
+import type { User, Seller, Client } from "@/lib/types/prisma";
 import { create } from "zustand";
 
 type UserStore = {
-  user?: User;
-  set: (user: User) => void;
-  delete: () => void;
+  user?: User & { seller?: Seller; client?: Client };
+  refresh: () => void;
+  setUser: (user: User) => void;
+  logout: () => void;
 };
 
 export const userStore = create<UserStore>((set) => ({
   user: undefined,
-  set: (user) => {
+  setUser: (user) => {
     set({ user });
   },
-  delete: () => {
+  refresh: () => {},
+  logout: () => {
     set({ user: undefined });
+    localStorage.removeItem("user");
   },
 }));

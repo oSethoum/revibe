@@ -60,15 +60,48 @@ export default function ProductsPage() {
             title: t("name"),
             accessor: "name",
           },
-
           {
-            title: t("image"),
-            accessor: "image",
+            title: t("description"),
+            accessor: "description",
+          },
+          {
+            title: t("price"),
+            accessor: "price",
+          },
+          {
+            title: t("discount"),
+            accessor: "discount",
+          },
+          {
+            title: t("stock"),
+            accessor: "stock",
+          },
+          {
+            title: t("category"),
+            accessor: "category",
+            render: (record) => {
+              return <>{record.category?.name}</>;
+            },
+          },
+          {
+            title: t("seller"),
+            accessor: "seller",
+          },
+          {
+            title: t("shop"),
+            accessor: "shop",
+            render: (record) => {
+              return <>{record.seller?.shop}</>;
+            },
+          },
+          {
+            title: t("images"),
+            accessor: "images",
             render: (record) => {
               return (
                 <Box>
                   <ImagesViewer
-                    images={[record.image]}
+                    images={record.images}
                     thumbnail={{ width: 35 }}
                   />
                 </Box>
